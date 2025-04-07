@@ -75,6 +75,7 @@ jobs:
           mlruns/
           mlflow-artifacts/
           mlflow.db
+          models/
   
   build-and-deploy:
     name: Build and Deploy
@@ -93,14 +94,17 @@ jobs:
       with:
         name: model-artifacts
         
-    - name: Build and push model API image
-      uses: docker/build-push-action@v5
-      with:
-        context: ./services/model-api
-        push: false
-        tags: model-api:latest
-        load: true
+    - name: Debug Docker build environment
+      run: |
+        echo "Checking Docker build environment..."
+        ls -la ./services/model-api/
+        cat ./services/model-api/requirements.txt
         
+    - name: Build Docker image
+      run: |
+        cd ./services/model-api
+        docker build -t model-api:latest . --progress=plain
+      
     - name: Deploy to local Kubernetes (Minikube)
       run: |
         echo "In a real environment, you would push the Docker image to a registry and deploy to Kubernetes"
