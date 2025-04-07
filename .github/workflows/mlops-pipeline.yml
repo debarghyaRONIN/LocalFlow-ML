@@ -97,13 +97,14 @@ jobs:
     - name: Debug Docker build environment
       run: |
         echo "Checking Docker build environment..."
+        ls -la ./data/
         ls -la ./services/model-api/
         cat ./services/model-api/requirements.txt
         
     - name: Build Docker image
       run: |
-        cd ./services/model-api
-        docker build -t model-api:latest . --progress=plain
+        # Use the project root as build context and specify the Dockerfile path
+        docker build -t model-api:latest -f ./services/model-api/Dockerfile . --progress=plain
       
     - name: Deploy to local Kubernetes (Minikube)
       run: |

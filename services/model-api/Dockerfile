@@ -12,21 +12,18 @@ RUN apt-get update && apt-get install -y \
     libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Set up directories for feature store and validation
+# Copy application code
+COPY services/model-api/app/ /app/app/
+
+# Copy data directory from project root
+COPY data/ /app/data/
+
+# Set up directories that might not exist in the copied data/
 RUN mkdir -p /app/data/feature_store/transformers \
     /app/data/feature_store/schemas \
     /app/data/feature_store/features \
     /app/data/validation/expectations \
     /app/data/validation/validations
-
-# Copy application code
-COPY app/ /app/app/
-
-# Copy data modules
-COPY data/ /app/data/
-
-# Create module files
-RUN touch /app/data/__init__.py
 
 # Set environment variables
 ENV PYTHONPATH=/app
