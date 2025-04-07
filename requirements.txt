@@ -1,0 +1,33 @@
+# Data Science & ML
+scikit-learn
+numpy
+pandas
+matplotlib
+seaborn
+joblib
+
+# MLOps & Model Tracking
+mlflow
+evidently
+openlineage-python
+
+# API & Web
+fastapi
+uvicorn
+pydantic
+python-dotenv
+
+# AWS / S3 compatibility for MinIO
+boto3
+botocore
+
+# Monitoring
+prometheus-client
+
+# Testing
+pytest
+
+# Development
+black
+flake8
+isort

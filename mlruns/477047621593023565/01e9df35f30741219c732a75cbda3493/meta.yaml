@@ -1,0 +1,15 @@
+artifact_uri: mlflow-artifacts:/477047621593023565/01e9df35f30741219c732a75cbda3493/artifacts
+end_time: 1744032772669
+entry_point_name: ''
+experiment_id: '477047621593023565'
+lifecycle_stage: active
+run_id: 01e9df35f30741219c732a75cbda3493
+run_name: wistful-fly-796
+run_uuid: 01e9df35f30741219c732a75cbda3493
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1744032767211
+status: 3
+tags: []
+user_id: debar

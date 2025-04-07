@@ -1,0 +1,15 @@
+artifact_uri: mlflow-artifacts:/477047621593023565/a7773114c29d451a879193b35f1aa425/artifacts
+end_time: 1744032732889
+entry_point_name: ''
+experiment_id: '477047621593023565'
+lifecycle_stage: active
+run_id: a7773114c29d451a879193b35f1aa425
+run_name: thoughtful-hare-146
+run_uuid: a7773114c29d451a879193b35f1aa425
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1744032727241
+status: 3
+tags: []
+user_id: debar
