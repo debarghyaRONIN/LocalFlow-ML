@@ -1,0 +1,6 @@
+artifact_location: file:///c:/Users/debar/OneDrive/Desktop/MLops%20Project/models/notebooks/mlruns/337376785421016113
+creation_time: 1744036674514
+experiment_id: '337376785421016113'
+last_update_time: 1744036674514
+lifecycle_stage: active
+name: iris-classifier-notebook

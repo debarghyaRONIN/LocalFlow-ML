@@ -1,0 +1,15 @@
+artifact_uri: file:///c:/Users/debar/OneDrive/Desktop/MLops%20Project/models/notebooks/mlruns/337376785421016113/b2190af14ca24de6a5c9a167ae84b8f3/artifacts
+end_time: 1744036680672
+entry_point_name: ''
+experiment_id: '337376785421016113'
+lifecycle_stage: active
+run_id: b2190af14ca24de6a5c9a167ae84b8f3
+run_name: wistful-colt-418
+run_uuid: b2190af14ca24de6a5c9a167ae84b8f3
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1744036674645
+status: 3
+tags: []
+user_id: debar
