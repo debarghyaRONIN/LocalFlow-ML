@@ -25,7 +25,12 @@ AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID", "minio")
 AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY", "minio123")
 
 # Configure MLflow
-mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
+try:
+    mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
+    logger.info(f"MLflow tracking URI set to: {MLFLOW_TRACKING_URI}")
+except Exception as e:
+    logger.error(f"Error setting MLflow tracking URI: {str(e)}")
+    logger.warning("Will attempt to continue without MLflow tracking")
 
 def load_data():
     """Load sample Iris dataset."""
@@ -96,42 +101,54 @@ def log_to_mlflow(model, params, metrics, X_train, y_train, X_test, y_test, feat
     """Log model, parameters, and metrics to MLflow."""
     logger.info("Logging to MLflow")
     
-    # Set experiment
-    mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
-    
-    # Start run and log everything
-    with mlflow.start_run() as run:
-        # Log parameters
-        mlflow.log_params(params)
+    try:
+        # Set experiment
+        mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
         
-        # Log metrics
-        mlflow.log_metrics(metrics)
+        # Start run and log everything
+        with mlflow.start_run() as run:
+            # Log parameters
+            mlflow.log_params(params)
+            
+            # Log metrics
+            mlflow.log_metrics(metrics)
+            
+            # Log model
+            signature = infer_signature(X_train, model.predict(X_train))
+            
+            mlflow.sklearn.log_model(
+                sk_model=model,
+                artifact_path="model",
+                signature=signature,
+                registered_model_name="iris-classifier"
+            )
+            
+            # Log feature importance
+            feature_importance = pd.DataFrame({
+                'feature': feature_names,
+                'importance': model.feature_importances_
+            }).sort_values('importance', ascending=False)
+            
+            mlflow.log_dict(
+                dictionary=feature_importance.to_dict(),
+                artifact_file="feature_importance.json"
+            )
+            
+            run_id = run.info.run_id
+            logger.info(f"MLflow run completed (run_id: {run_id})")
+            
+            return run_id
+    except Exception as e:
+        logger.error(f"Failed to log to MLflow: {str(e)}")
+        logger.info("Saving model locally instead")
         
-        # Log model
-        signature = infer_signature(X_train, model.predict(X_train))
+        # Save model locally as fallback
+        os.makedirs("models", exist_ok=True)
+        local_model_path = os.path.join("models", "iris_classifier.joblib")
+        joblib.dump(model, local_model_path)
+        logger.info(f"Model saved locally to: {local_model_path}")
         
-        mlflow.sklearn.log_model(
-            sk_model=model,
-            artifact_path="model",
-            signature=signature,
-            registered_model_name="iris-classifier"
-        )
-        
-        # Log feature importance
-        feature_importance = pd.DataFrame({
-            'feature': feature_names,
-            'importance': model.feature_importances_
-        }).sort_values('importance', ascending=False)
-        
-        mlflow.log_dict(
-            dictionary=feature_importance.to_dict(),
-            artifact_file="feature_importance.json"
-        )
-        
-        run_id = run.info.run_id
-        logger.info(f"MLflow run completed (run_id: {run_id})")
-        
-        return run_id
+        return None
 
 def main(model_params=None):
     """Main training pipeline function."""
@@ -170,6 +187,12 @@ def main(model_params=None):
             feature_names=feature_names,
             target_names=target_names
         )
+        
+        # Always save model locally as a backup
+        os.makedirs("models", exist_ok=True)
+        local_model_path = os.path.join("models", "iris_classifier.joblib")
+        joblib.dump(model, local_model_path)
+        logger.info(f"Model backup saved locally to: {local_model_path}")
         
         logger.info("Training pipeline completed successfully")
         return run_id
