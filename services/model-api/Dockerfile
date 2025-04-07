@@ -2,29 +2,41 @@ FROM python:3.10-slim
 
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Install additional system dependencies for SHAP
+RUN apt-get update && apt-get install -y \
     build-essential \
-    gcc \
+    libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Set environment variables
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1
-
-# Copy and install requirements separately to leverage Docker cache
-COPY requirements.txt .
-
-# Install Python dependencies with better error handling
-RUN pip install --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+# Set up directories for feature store and validation
+RUN mkdir -p /app/data/feature_store/transformers \
+    /app/data/feature_store/schemas \
+    /app/data/feature_store/features \
+    /app/data/validation/expectations \
+    /app/data/validation/validations
 
 # Copy application code
-COPY . .
+COPY app/ /app/app/
+
+# Copy data modules
+COPY data/ /app/data/
+
+# Create module files
+RUN touch /app/data/__init__.py
+
+# Set environment variables
+ENV PYTHONPATH=/app
+ENV MLFLOW_TRACKING_URI=http://mlflow:5000
+ENV MLFLOW_S3_ENDPOINT_URL=http://minio:9000
+ENV AWS_ACCESS_KEY_ID=minio
+ENV AWS_SECRET_ACCESS_KEY=minio123
 
 # Expose port
 EXPOSE 8000
 
-# Command to run
+# Command to run the application
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"] 

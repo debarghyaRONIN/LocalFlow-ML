@@ -18,6 +18,13 @@ Debarghya Saha
 | Lineage Tracking | OpenLineage + DataHub to visualize data + model flow and dependencies |
 | Artifact Storage | MinIO (S3-compatible) for storing datasets, trained models, etc. |
 | Deployment Orchestration | Docker and Minikube (Kubernetes) to manage everything locally |
+| Model Versioning & Promotion | Automated promotion across stages (Dev, Staging, Production) with rollback capability |
+| Feature Store | Consistent feature engineering between training and inference |
+| A/B Testing | Framework for comparing multiple model variants in production |
+| Model Explainability | SHAP-based explanations for model predictions |
+| Data Validation | Schema enforcement and statistical validation for training and inference data |
+| Advanced Testing | Comprehensive unit, integration, and end-to-end tests |
+| Complex Dataset Support | Support for multiple dataset types beyond Iris (California Housing) |
 
 ## Prerequisites
 
@@ -47,14 +54,58 @@ Debarghya Saha
 
 ```
 ├── .github/            # GitHub Actions workflows for CI/CD
-├── data/               # Sample datasets and data processing scripts
+├── data/
+│   ├── feature_store/  # Feature storage and transformation
+│   ├── validation/     # Data validation expectations and schemas
+│   ├── raw/            # Raw input datasets
+│   └── processed/      # Processed datasets ready for training
 ├── infrastructure/     # Kubernetes manifests for the infrastructure
 ├── models/             # Model training code and evaluation scripts
 ├── monitoring/         # Monitoring configuration (Prometheus, Grafana, etc.)
-├── notebooks/          # Jupyter notebooks for exploration
-├── pipelines/          # Training and deployment pipeline code
-└── services/           # Microservices (FastAPI model serving, etc.)
+├── pipelines/
+│   ├── training/       # Training pipeline code
+│   ├── deployment/     # Deployment pipeline code
+│   └── management/     # Model lifecycle management
+├── services/
+│   ├── model-api/      # Model serving API with explainability and A/B testing
+│   └── training-api/   # API for triggering model retraining
+└── tests/              # Comprehensive test suite
+    ├── unit/           # Unit tests for components
+    ├── integration/    # Integration tests for services
+    └── e2e/            # End-to-end tests for the full pipeline
 ```
+
+## Advanced Features
+
+### Model Versioning and Promotion
+The platform supports automatic versioning of models and a sophisticated promotion workflow:
+- Development → Staging → Production
+- Promotion based on performance metrics
+- One-click rollback capability
+
+### Feature Store
+Ensures consistent feature transformations between training and inference:
+- Version-controlled feature transformations
+- Feature caching for performance
+- Schema validation for features
+
+### A/B Testing Framework
+Compare multiple model variants in production:
+- Traffic splitting with configurable weights
+- Sticky sessions for consistent user experience
+- Automatic performance tracking and reporting
+
+### Model Explainability
+Transparent ML with SHAP-based explanations:
+- Feature importance visualization
+- Individual prediction explanations
+- Global model interpretation
+
+### Data Validation
+Ensures data quality throughout the ML lifecycle:
+- Schema validation with Pydantic
+- Statistical checks with Great Expectations
+- Automatic data quality reporting
 
 ## License
 
