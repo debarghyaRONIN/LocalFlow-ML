@@ -1,0 +1,69 @@
+groups:
+  - name: model_api
+    rules:
+    - alert: HighErrorRate
+      expr: sum(rate(http_requests_total{status=~"5.."}[5m])) / sum(rate(http_requests_total[5m])) > 0.05
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: "High error rate on model API"
+        description: "Error rate is above 5% for 5 minutes (current value: {{ $value }})"
+
+    - alert: HighLatency
+      expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job="model-api"}[5m])) by (le)) > 1
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High latency on model API"
+        description: "95th percentile latency is above 1s for 5 minutes (current value: {{ $value }}s)"
+
+    - alert: LowThroughput
+      expr: sum(rate(http_requests_total{job="model-api"}[5m])) < 1
+      for: 15m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Low throughput on model API"
+        description: "Request rate is below 1 req/s for 15 minutes (current value: {{ $value }} req/s)"
+
+  - name: model_performance
+    rules:
+    - alert: DriftDetected
+      expr: ml_data_drift_score > 0.2
+      for: 1h
+      labels:
+        severity: warning
+      annotations:
+        summary: "Data drift detected"
+        description: "Data drift score is above threshold (current value: {{ $value }})"
+    
+    - alert: HighPredictionLatency
+      expr: histogram_quantile(0.95, sum(rate(model_prediction_duration_seconds_bucket[5m])) by (le, model_version)) > 0.1
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High prediction latency"
+        description: "95th percentile model prediction latency is above 100ms (current value: {{ $value }}s)"
+
+  - name: resources
+    rules:
+    - alert: HighCpuUsage
+      expr: sum(rate(container_cpu_usage_seconds_total{namespace="mlops", container!=""}[5m])) by (pod) / sum(container_spec_cpu_quota{namespace="mlops", container!=""} / container_spec_cpu_period{namespace="mlops", container!=""}) by (pod) > 0.8
+      for: 15m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High CPU usage"
+        description: "CPU usage is above 80% for 15 minutes (current value: {{ $value }})"
+    
+    - alert: HighMemoryUsage
+      expr: sum(container_memory_usage_bytes{namespace="mlops", container!=""}) by (pod) / sum(container_spec_memory_limit_bytes{namespace="mlops", container!=""}) by (pod) > 0.8
+      for: 15m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High memory usage"
+        description: "Memory usage is above 80% for 15 minutes (current value: {{ $value }})" 

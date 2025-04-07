@@ -1,0 +1,27 @@
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    version: 1
+    editable: true
+    jsonData:
+      timeInterval: "15s"
+      queryTimeout: "60s"
+      httpMethod: "POST"
+  
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    version: 1
+    editable: true
+    jsonData:
+      maxLines: 1000
+      derivedFields:
+        - name: "traceID"
+          matcherRegex: "traceID=(\\w+)"
+          url: "http://jaeger-query:16686/trace/$${__value.raw}" 

@@ -8,6 +8,16 @@ data:
     global:
       scrape_interval: 15s
       evaluation_interval: 15s
+      scrape_timeout: 10s
+    
+    rule_files:
+      - "/etc/prometheus/rules/*.yml"
+    
+    alerting:
+      alertmanagers:
+        - static_configs:
+            - targets:
+              - alertmanager:9093
     
     scrape_configs:
       - job_name: 'prometheus'
@@ -27,6 +37,90 @@ data:
           - source_labels: [__meta_kubernetes_endpoint_port_name]
             regex: metrics
             action: keep
+          - source_labels: [__meta_kubernetes_namespace]
+            target_label: namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: pod
+      
+      - job_name: 'mlflow'
+        metrics_path: /metrics
+        kubernetes_sd_configs:
+          - role: endpoints
+            namespaces:
+              names:
+                - mlops
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_service_label_app]
+            regex: mlflow
+            action: keep
+          - source_labels: [__meta_kubernetes_namespace]
+            target_label: namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: pod
+      
+      - job_name: 'kubernetes-pods'
+        kubernetes_sd_configs:
+          - role: pod
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: true
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__
+            regex: (.+)
+          - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+            action: replace
+            regex: ([^:]+)(?::\d+)?;(\d+)
+            replacement: $1:$2
+            target_label: __address__
+          - action: labelmap
+            regex: __meta_kubernetes_pod_label_(.+)
+          - source_labels: [__meta_kubernetes_namespace]
+            action: replace
+            target_label: kubernetes_namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            action: replace
+            target_label: kubernetes_pod_name
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-rules
+  namespace: mlops
+data:
+  alert_rules.yml: |
+    groups:
+      - name: model_api
+        rules:
+        - alert: HighErrorRate
+          expr: sum(rate(http_requests_total{status=~"5.."}[5m])) / sum(rate(http_requests_total[5m])) > 0.05
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "High error rate on model API"
+            description: "Error rate is above 5% for 5 minutes (current value: {{ $value }})"
+
+        - alert: HighLatency
+          expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job="model-api"}[5m])) by (le)) > 1
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High latency on model API"
+            description: "95th percentile latency is above 1s for 5 minutes (current value: {{ $value }}s)"
+
+      - name: model_performance
+        rules:
+        - alert: DriftDetected
+          expr: ml_data_drift_score > 0.2
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            summary: "Data drift detected"
+            description: "Data drift score is above threshold (current value: {{ $value }})"
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -61,11 +155,15 @@ spec:
         args:
         - "--config.file=/etc/prometheus/prometheus.yml"
         - "--storage.tsdb.path=/prometheus"
+        - "--web.enable-lifecycle"
         ports:
         - containerPort: 9090
         volumeMounts:
         - name: prometheus-config
-          mountPath: /etc/prometheus
+          mountPath: /etc/prometheus/prometheus.yml
+          subPath: prometheus.yml
+        - name: prometheus-rules
+          mountPath: /etc/prometheus/rules
         - name: prometheus-data
           mountPath: /prometheus
         readinessProbe:
@@ -84,6 +182,9 @@ spec:
       - name: prometheus-config
         configMap:
           name: prometheus-config
+      - name: prometheus-rules
+        configMap:
+          name: prometheus-rules
       - name: prometheus-data
         persistentVolumeClaim:
           claimName: prometheus-pvc
@@ -100,4 +201,81 @@ spec:
     name: ui
   selector:
     app: prometheus
-  type: NodePort 
+  type: NodePort
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alertmanager
+  namespace: mlops
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: alertmanager
+  template:
+    metadata:
+      labels:
+        app: alertmanager
+    spec:
+      containers:
+      - name: alertmanager
+        image: prom/alertmanager:v0.25.0
+        args:
+        - "--config.file=/etc/alertmanager/alertmanager.yml"
+        - "--storage.path=/alertmanager"
+        ports:
+        - containerPort: 9093
+        volumeMounts:
+        - name: alertmanager-config
+          mountPath: /etc/alertmanager
+        - name: alertmanager-data
+          mountPath: /alertmanager
+      volumes:
+      - name: alertmanager-config
+        configMap:
+          name: alertmanager-config
+      - name: alertmanager-data
+        emptyDir: {}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmanager-config
+  namespace: mlops
+data:
+  alertmanager.yml: |
+    global:
+      resolve_timeout: 5m
+      
+    route:
+      group_by: ['alertname', 'job']
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 4h
+      receiver: 'default-receiver'
+      routes:
+      - match:
+          severity: critical
+        receiver: 'critical-receiver'
+    
+    receivers:
+    - name: 'default-receiver'
+      # Configure actual receivers when needed
+    
+    - name: 'critical-receiver'
+      # Configure actual receivers when needed
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: alertmanager
+  namespace: mlops
+spec:
+  ports:
+  - port: 9093
+    targetPort: 9093
+    name: ui
+  selector:
+    app: alertmanager
+  type: ClusterIP 

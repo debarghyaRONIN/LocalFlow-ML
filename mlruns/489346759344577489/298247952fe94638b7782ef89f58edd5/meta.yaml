@@ -1,0 +1,15 @@
+artifact_uri: mlflow-artifacts:/489346759344577489/298247952fe94638b7782ef89f58edd5/artifacts
+end_time: 1744052364879
+entry_point_name: ''
+experiment_id: '489346759344577489'
+lifecycle_stage: active
+run_id: 298247952fe94638b7782ef89f58edd5
+run_name: rogue-flea-578
+run_uuid: 298247952fe94638b7782ef89f58edd5
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1744052359291
+status: 3
+tags: []
+user_id: debar

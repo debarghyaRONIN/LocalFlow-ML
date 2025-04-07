@@ -1,0 +1,6 @@
+artifact_location: mlflow-artifacts:/489346759344577489
+creation_time: 1744051154955
+experiment_id: '489346759344577489'
+last_update_time: 1744051154955
+lifecycle_stage: active
+name: custom-training

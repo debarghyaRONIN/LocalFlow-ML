@@ -1,0 +1,63 @@
+global:
+  resolve_timeout: 5m
+  smtp_smarthost: 'smtp.gmail.com:587'
+  smtp_from: 'alertmanager@example.com'
+  smtp_auth_username: 'alertmanager@example.com'
+  smtp_auth_password: 'password'
+  smtp_require_tls: true
+
+route:
+  group_by: ['alertname', 'job', 'severity']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  receiver: 'email-notifications'
+  routes:
+  - match:
+      severity: critical
+    receiver: 'slack-critical'
+    continue: true
+  - match:
+      severity: warning
+    receiver: 'slack-warnings'
+
+receivers:
+- name: 'email-notifications'
+  email_configs:
+  - to: 'team@example.com'
+    send_resolved: true
+
+- name: 'slack-critical'
+  slack_configs:
+  - api_url: 'https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX'
+    channel: '#mlops-alerts-critical'
+    title: '{{ .GroupLabels.alertname }}'
+    text: >-
+      {{ range .Alerts }}
+        *Alert:* {{ .Annotations.summary }}
+        *Description:* {{ .Annotations.description }}
+        *Severity:* {{ .Labels.severity }}
+        *Service:* {{ .Labels.service }}
+      {{ end }}
+    send_resolved: true
+
+- name: 'slack-warnings'
+  slack_configs:
+  - api_url: 'https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX'
+    channel: '#mlops-alerts'
+    title: '{{ .GroupLabels.alertname }}'
+    text: >-
+      {{ range .Alerts }}
+        *Alert:* {{ .Annotations.summary }}
+        *Description:* {{ .Annotations.description }}
+        *Severity:* {{ .Labels.severity }}
+        *Service:* {{ .Labels.service }}
+      {{ end }}
+    send_resolved: true
+
+inhibit_rules:
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'service'] 

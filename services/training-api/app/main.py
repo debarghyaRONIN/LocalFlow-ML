@@ -20,6 +20,7 @@ from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score, 
     mean_absolute_error, mean_squared_error, r2_score
 )
+from sklearn.preprocessing import OneHotEncoder
 import mlflow
 import mlflow.sklearn
 
@@ -308,7 +309,7 @@ def predict(prediction_request: PredictionRequest):
         input_data = pd.DataFrame(prediction_request.data)
         
         # Get features used in training
-        features = training_request.get("features", [])
+        features = training_result.get("features", [])
         if not features:
             # Get all features from the original dataset excluding target
             dataset_id = training_request.get("dataset_id")
@@ -317,8 +318,12 @@ def predict(prediction_request: PredictionRequest):
                 target_col = training_request.get("target_column")
                 features = [col for col in df.columns if col != target_col]
         
-        # Validate input data has required features
-        missing_features = [col for col in features if col not in input_data.columns]
+        # Validate input data has required basic features (pre-encoding)
+        categorical_cols = training_result.get("categorical_cols", [])
+        required_base_features = [col for col in features if col not in categorical_cols]
+        required_base_features += categorical_cols  # Add categorical columns before encoding
+        
+        missing_features = [col for col in required_base_features if col not in input_data.columns]
         if missing_features:
             raise HTTPException(
                 status_code=400,
@@ -326,21 +331,71 @@ def predict(prediction_request: PredictionRequest):
             )
         
         # Prepare input data (apply same preprocessing as during training)
-        X = input_data[features]
+        X = input_data[required_base_features].copy()
         
         # Handle missing values
         for col in X.columns:
             if X[col].isna().any():
                 # Use simple imputation as in training
                 if pd.api.types.is_numeric_dtype(X[col]):
-                    X[col] = X[col].fillna(X[col].mean())
+                    # Check if all values are NaN
+                    if X[col].isna().all():
+                        # If all values are NaN, fill with 0
+                        X.loc[:, col] = 0
+                    else:
+                        # Otherwise fill with mean
+                        X.loc[:, col] = X[col].fillna(X[col].mean())
                 else:
-                    X[col] = X[col].fillna("missing")
+                    # For categorical columns
+                    if X[col].isna().all():
+                        # If all values are NaN, fill with "missing"
+                        X.loc[:, col] = "missing"
+                    else:
+                        # Otherwise fill with mode
+                        most_common = X[col].mode()
+                        fill_value = most_common[0] if not most_common.empty else "missing"
+                        X.loc[:, col] = X[col].fillna(fill_value)
         
-        # Handle categorical features
-        categorical_cols = X.select_dtypes(include=['object', 'category']).columns
-        if not categorical_cols.empty:
-            X = pd.get_dummies(X, columns=categorical_cols, drop_first=True)
+        # Verify no NaN values remain after imputation
+        if X.isna().any().any():
+            # Find columns still containing NaN
+            nan_cols = [col for col in X.columns if X[col].isna().any()]
+            # Additional aggressive handling for remaining NaNs
+            for col in nan_cols:
+                if pd.api.types.is_numeric_dtype(X[col]):
+                    # Fill remaining NaNs in numeric columns with 0
+                    X.loc[:, col] = X[col].fillna(0)
+                else:
+                    # Fill remaining NaNs in categorical columns with "missing"
+                    X.loc[:, col] = X[col].fillna("missing")
+                    
+        # Final check to ensure no NaNs remain
+        if X.isna().any().any():
+            raise ValueError("Unable to handle all missing values in prediction data")
+        
+        # Handle categorical features - must match training encoding exactly
+        if categorical_cols:
+            # Get the training-time columns after one-hot encoding
+            expected_columns = training_result.get("encoded_columns", [])
+            
+            # Apply one-hot encoding with the categories determined during training
+            X_encoded = pd.get_dummies(X, columns=categorical_cols)
+            
+            # Add missing dummy columns (that were in training but not in this data)
+            for col in expected_columns:
+                if col not in X_encoded.columns:
+                    X_encoded[col] = 0
+                    
+            # Remove extra columns that weren't in training data
+            extra_cols = [col for col in X_encoded.columns if col not in expected_columns and col not in required_base_features]
+            if extra_cols:
+                X_encoded = X_encoded.drop(columns=extra_cols)
+                
+            # Ensure columns are in the same order as during training
+            X_encoded = X_encoded[expected_columns]
+            
+            # Use this for prediction
+            X = X_encoded
         
         # Make predictions
         predictions = model.predict(X).tolist()
@@ -488,29 +543,84 @@ def _train_model_task(job_id: str, dataset_id: str, training_request: TrainingRe
         else:
             features = [col for col in df.columns if col != target]
         
-        X = df[features]
-        y = df[target]
+        X = df[features].copy()  # Use copy to avoid SettingWithCopyWarning
+        y = df[target].copy()    # Use copy to avoid SettingWithCopyWarning
         
         # Handle missing values
         if X.isna().any().any():
             training_jobs[job_id]["warnings"].append(
                 "Dataset contains missing values. Simple imputation will be applied."
             )
+            
             # Simple imputation: fill numeric with mean, categorical with mode
             for col in X.columns:
+                if X[col].isna().any():
+                    if pd.api.types.is_numeric_dtype(X[col]):
+                        # Check if all values are NaN
+                        if X[col].isna().all():
+                            # If all values are NaN, fill with 0
+                            X.loc[:, col] = 0  # Use .loc to avoid SettingWithCopyWarning
+                            training_jobs[job_id]["warnings"].append(
+                                f"Column '{col}' contains all missing values and has been filled with 0."
+                            )
+                        else:
+                            # Otherwise fill with mean
+                            X.loc[:, col] = X[col].fillna(X[col].mean())
+                    else:
+                        # For categorical columns
+                        if X[col].isna().all():
+                            # If all values are NaN, fill with "missing"
+                            X.loc[:, col] = "missing"  # Use .loc to avoid SettingWithCopyWarning
+                            training_jobs[job_id]["warnings"].append(
+                                f"Column '{col}' contains all missing values and has been filled with 'missing'."
+                            )
+                        else:
+                            # Otherwise fill with mode
+                            most_common = X[col].mode()
+                            fill_value = most_common[0] if not most_common.empty else "missing"
+                            X.loc[:, col] = X[col].fillna(fill_value)
+        
+        # Verify no NaN values remain after imputation
+        if X.isna().any().any():
+            # Find columns still containing NaN
+            nan_cols = [col for col in X.columns if X[col].isna().any()]
+            training_jobs[job_id]["warnings"].append(
+                f"Additional imputation needed for columns: {', '.join(nan_cols)}"
+            )
+            
+            # Additional aggressive handling for remaining NaNs
+            for col in nan_cols:
                 if pd.api.types.is_numeric_dtype(X[col]):
-                    X[col] = X[col].fillna(X[col].mean())
+                    # Fill remaining NaNs in numeric columns with 0
+                    X.loc[:, col] = X[col].fillna(0)
                 else:
-                    X[col] = X[col].fillna(X[col].mode()[0] if not X[col].mode().empty else "missing")
+                    # Fill remaining NaNs in categorical columns with "missing"
+                    X.loc[:, col] = X[col].fillna("missing")
+            
+            training_jobs[job_id]["warnings"].append(
+                "Some columns still contained NaN values after initial imputation. Additional imputation was applied."
+            )
+        
+        # Final sanity check
+        if X.isna().any().any():
+            raise ValueError("Dataset still contains NaN values after imputation")
         
         # Handle categorical features
         categorical_cols = X.select_dtypes(include=['object', 'category']).columns
+        encoded_columns = []
+        
         if not categorical_cols.empty:
             # For simplicity, we'll do a basic one-hot encoding
             training_jobs[job_id]["warnings"].append(
                 "Categorical features detected. Basic one-hot encoding will be applied."
             )
             X = pd.get_dummies(X, columns=categorical_cols, drop_first=True)
+            # Store the column names after encoding for prediction time
+            encoded_columns = X.columns.tolist()
+        
+        # Sanity check after encoding
+        if X.isna().any().any():
+            raise ValueError("NaN values detected after categorical encoding")
         
         # Split data
         X_train, X_test, y_train, y_test = train_test_split(
@@ -608,8 +718,9 @@ def _train_model_task(job_id: str, dataset_id: str, training_request: TrainingRe
             "feature_importance": feature_importance,
             "run_id": run_id,
             "model_path": model_path,
-            "features": features,  # Save features for prediction
-            "categorical_cols": categorical_cols.tolist() if not categorical_cols.empty else []
+            "features": features,  # Save original features for prediction
+            "categorical_cols": categorical_cols.tolist() if not categorical_cols.empty else [],
+            "encoded_columns": encoded_columns  # Save encoded column names for prediction
         }
         
         # Update job status

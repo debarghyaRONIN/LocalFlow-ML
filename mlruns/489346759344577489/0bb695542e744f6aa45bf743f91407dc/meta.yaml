@@ -1,0 +1,15 @@
+artifact_uri: mlflow-artifacts:/489346759344577489/0bb695542e744f6aa45bf743f91407dc/artifacts
+end_time: 1744051160037
+entry_point_name: ''
+experiment_id: '489346759344577489'
+lifecycle_stage: active
+run_id: 0bb695542e744f6aa45bf743f91407dc
+run_name: resilient-snake-460
+run_uuid: 0bb695542e744f6aa45bf743f91407dc
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1744051155140
+status: 3
+tags: []
+user_id: debar

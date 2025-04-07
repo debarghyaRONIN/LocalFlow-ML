@@ -1,0 +1,15 @@
+artifact_uri: mlflow-artifacts:/489346759344577489/85e441b252134fd1b08222c8dea136c2/artifacts
+end_time: 1744052362913
+entry_point_name: ''
+experiment_id: '489346759344577489'
+lifecycle_stage: active
+run_id: 85e441b252134fd1b08222c8dea136c2
+run_name: fortunate-moth-768
+run_uuid: 85e441b252134fd1b08222c8dea136c2
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1744052359279
+status: 3
+tags: []
+user_id: debar

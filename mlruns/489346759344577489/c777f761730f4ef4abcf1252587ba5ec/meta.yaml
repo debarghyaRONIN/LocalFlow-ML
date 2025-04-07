@@ -1,0 +1,15 @@
+artifact_uri: mlflow-artifacts:/489346759344577489/c777f761730f4ef4abcf1252587ba5ec/artifacts
+end_time: 1744054007502
+entry_point_name: ''
+experiment_id: '489346759344577489'
+lifecycle_stage: active
+run_id: c777f761730f4ef4abcf1252587ba5ec
+run_name: valuable-trout-466
+run_uuid: c777f761730f4ef4abcf1252587ba5ec
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1744054002984
+status: 3
+tags: []
+user_id: debar
