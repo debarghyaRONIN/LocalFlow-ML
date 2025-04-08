@@ -24,14 +24,14 @@ Debarghya Saha
 | Model Explainability | SHAP-based explanations for model predictions |
 | Data Validation | Schema enforcement and statistical validation for training and inference data |
 | Advanced Testing | Comprehensive unit, integration, and end-to-end tests |
-| Complex Dataset Support | Support for multiple dataset types beyond Iris (California Housing) |
+| Complex Dataset Support | Support for multiple dataset types|
 
 ## Prerequisites
 
 - Docker
 - Minikube
 - kubectl
-- Python 3.8+
+- Python 3.8 - 3.11
 - Git
 
 ## Getting Started
