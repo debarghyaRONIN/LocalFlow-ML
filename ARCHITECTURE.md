@@ -76,12 +76,12 @@ graph TB
     L1 --> L2
 
     %% Styling
-    classDef data fill:#f9f,stroke:#333,stroke-width:2px
-    classDef pipeline fill:#bbf,stroke:#333,stroke-width:2px
-    classDef deployment fill:#bfb,stroke:#333,stroke-width:2px
-    classDef monitoring fill:#fbb,stroke:#333,stroke-width:2px
-    classDef cicd fill:#ff9,stroke:#333,stroke-width:2px
-    classDef lineage fill:#bff,stroke:#333,stroke-width:2px
+    classDef data fill:#f9f,stroke:#333,stroke-width:2px,color:black
+    classDef pipeline fill:#bbf,stroke:#333,stroke-width:2px,color:black
+    classDef deployment fill:#bfb,stroke:#333,stroke-width:2px,color:black
+    classDef monitoring fill:#fbb,stroke:#333,stroke-width:2px,color:black
+    classDef cicd fill:#ff9,stroke:#333,stroke-width:2px,color:black
+    classDef lineage fill:#bff,stroke:#333,stroke-width:2px,color:black
 
     class D1,D2,D3,D4 data
     class P1,P2,P3,P4,P5 pipeline
