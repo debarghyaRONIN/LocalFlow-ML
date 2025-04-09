@@ -17,6 +17,11 @@ uvicorn
 pydantic
 python-dotenv
 
+# Desktop UI
+PyQt6
+PyQt6-Qt6
+PyQt6-sip
+
 # AWS / S3 compatibility for MinIO
 boto3
 botocore
