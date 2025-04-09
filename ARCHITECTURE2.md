@@ -1,6 +1,6 @@
 # Java Integration Architecture for LocalFlow-ML
 
-This document outlines how Java developers can integrate with and extend the LocalFlow-ML project, focusing on both backend and frontend components.
+This document outlines how Java developers can integrate with and extend the LocalFlow-ML project, focusing on both backend and desktop frontend components.
 
 ## System Overview
 
@@ -32,17 +32,17 @@ This document outlines how Java developers can integrate with and extend the Loc
 
 
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                   Java Frontend (React + TypeScript)                     │
+│                 Java Desktop Application (JavaFX/Swing)                  │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                         │
 │  ┌─────────────┐   ┌─────────────┐   ┌─────────────┐   ┌─────────────┐  │
 │  │ Dashboard   │   │ Model       │   │ Data        │   │ Monitoring  │  │
-│  │ Components  │   │ Management  │   │ Exploration │   │ Components  │  │
+│  │ Views       │   │ Management  │   │ Exploration │   │ Views       │  │
 │  └─────────────┘   └─────────────┘   └─────────────┘   └─────────────┘  │
 │                                                                         │
 │  ┌─────────────┐   ┌─────────────┐   ┌─────────────┐   ┌─────────────┐  │
-│  │ API         │   │ State       │   │ User        │   │ Authentication│ │
-│  │ Integration │   │ Management  │   │ Interface   │   │ Components   │  │
+│  │ Service     │   │ Model-View  │   │ User        │   │ Security    │  │
+│  │ Integration │   │ Controllers │   │ Interface   │   │ Components  │  │
 │  └─────────────┘   └─────────────┘   └─────────────┘   └─────────────┘  │
 │                                                                         │
 └─────────────────────────────────────────────────────────────────────────┘
@@ -78,30 +78,34 @@ This document outlines how Java developers can integrate with and extend the Loc
 - **Cloud Storage Client**: AWS SDK for Java (for MinIO)
 - **Monitoring**: Micrometer with Prometheus integration
 
-## Java Frontend Architecture
+## Java Desktop Architecture
 
 ### Core Components
 
-1. **React Application**
-   - Built with TypeScript and React 18+
-   - Modern UI framework (MUI, Chakra UI, or Tailwind CSS)
+1. **JavaFX Application**
+   - Modern UI with JavaFX 17+
+   - FXML for view definitions
+   - Scene Builder for visual UI design
 
-2. **State Management**
-   - Redux or Context API for global state
-   - RTK Query or React Query for API data fetching
+2. **Application Architecture**
+   - Model-View-Controller (MVC) or Model-View-ViewModel (MVVM) pattern
+   - Service layer for business logic
+   - DTO objects for data transfer
 
 3. **Visualization Components**
-   - Dashboard with model metrics (using D3.js or Chart.js)
+   - JavaFX Charts for metrics visualization
+   - Custom dashboard components
    - Data exploration interfaces
-   - Model management UI
+   - Model management views
 
 ### Technology Stack
 
-- **Framework**: React with TypeScript
-- **Build Tool**: Vite or Next.js
-- **UI Library**: MUI, Chakra UI or Tailwind CSS
-- **API Communication**: Axios or Fetch API
-- **Testing**: Jest + React Testing Library
+- **UI Framework**: JavaFX (preferred) or Swing
+- **Build Tool**: 
+- **Styling**: 
+- **API Communication**: 
+- **Desktop Integration**: 
+- **Testing**: 
 
 ## Integration Architecture
 
@@ -123,22 +127,22 @@ This document outlines how Java developers can integrate with and extend the Loc
 ### Data Flow
 
 1. **Inference Flow**
-   - Java backend receives business request
-   - Transforms data for ML model consumption
+   - Desktop app collects input data
+   - Java service layer transforms data for ML model consumption
    - Calls ML Model API with prepared input
    - Processes prediction results
-   - Returns enriched business response
+   - Updates UI with results
 
 2. **Training Flow**
-   - Java services collect and prepare training data
-   - Trigger training pipelines via API
-   - Monitor training progress
-   - Receive notifications on model updates
+   - Java desktop app collects and prepares training data
+   - Triggers training pipelines via API
+   - Monitors training progress with live updates
+   - Receives notifications on model updates
 
 3. **Monitoring Flow**
-   - Java services expose metrics via Micrometer
-   - Metrics collected by Prometheus
-   - Visualized in Grafana dashboards
+   - Backend services expose metrics via Micrometer
+   - Desktop app retrieves and displays metrics
+   - Provides visualization of system health and performance
 
 ## Deployment Architecture
 
@@ -149,15 +153,15 @@ This document outlines how Java developers can integrate with and extend the Loc
    - Configure applications to connect to services in Minikube
    - Use port-forwarding for accessing Kubernetes services
 
-2. **Docker Compose** (optional)
-   - Alternative lightweight setup for development
-   - Includes Java services and databases
-   - Connects to Minikube services
+2. **Desktop Application Distribution**
+   - Package as native installers using jpackage
+   - Support for Windows, macOS, and Linux
+   - Auto-update mechanism using Update4j or similar
 
-### Kubernetes Deployment
+### Kubernetes Backend Deployment
 
 1. **Container Images**
-   - Dockerfiles for Java applications
+   - Dockerfiles for Java backend services
    - Multi-stage builds for optimized images
 
 2. **Kubernetes Resources**
@@ -169,33 +173,38 @@ This document outlines how Java developers can integrate with and extend the Loc
 
 ### Setup Steps
 
-1. Create Spring Boot applications using Spring Initializr
-2. Configure database connections and schema
-3. Implement REST controllers for ML model integration
-4. Set up authentication and security
-5. Develop frontend components with React
-6. Implement API integration in frontend
-7. Containerize applications
-8. Deploy to Minikube cluster
+1. Create Spring Boot applications for backend services
+2. Set up JavaFX project structure for desktop application
+3. Configure database connections and schema
+4. Implement service layer for ML model integration
+5. Set up authentication and security
+6. Design and implement desktop UI components
+7. Containerize backend applications
+8. Deploy backend to Minikube cluster
+9. Package desktop application for distribution
 
 ### Best Practices
 
-1. **API Design**
-   - Use consistent API patterns
-   - Implement proper error handling
-   - Version APIs appropriately
+1. **Desktop UI Design**
+   - Follow platform UI guidelines
+   - Ensure responsive layouts
+   - Provide intuitive workflows
+   - Support keyboard shortcuts and accessibility
 
 2. **Security**
    - Implement proper authentication and authorization
    - Secure sensitive data and credentials
    - Validate all inputs
+   - Use secure storage for local credentials
 
 3. **Performance**
-   - Implement caching where appropriate
-   - Optimize database queries
-   - Consider asynchronous processing for long-running tasks
+   - Implement background threading for long operations
+   - Use lazy loading for data-intensive views
+   - Optimize startup time and resource usage
+   - Consider caching for frequently accessed data
 
 4. **Testing**
    - Write unit tests for business logic
-   - Create integration tests for API endpoints
-   - Implement end-to-end tests for critical flows 
+   - Create UI tests with TestFX
+   - Implement integration tests for service layer
+   - Create end-to-end tests for critical workflows 
