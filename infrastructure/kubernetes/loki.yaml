@@ -72,6 +72,11 @@ spec:
       labels:
         app: loki
     spec:
+      securityContext:
+        fsGroup: 10001
+        runAsGroup: 10001
+        runAsNonRoot: true
+        runAsUser: 10001
       containers:
       - name: loki
         image: grafana/loki:2.8.3
@@ -85,17 +90,19 @@ spec:
           mountPath: /etc/loki
         - name: loki-data
           mountPath: /data
+        - name: tmp
+          mountPath: /tmp
         readinessProbe:
           httpGet:
             path: /ready
             port: http-metrics
-          initialDelaySeconds: 15
+          initialDelaySeconds: 30
           timeoutSeconds: 1
         livenessProbe:
           httpGet:
             path: /ready
             port: http-metrics
-          initialDelaySeconds: 45
+          initialDelaySeconds: 60
           timeoutSeconds: 1
       volumes:
       - name: loki-config
@@ -104,6 +111,8 @@ spec:
       - name: loki-data
         persistentVolumeClaim:
           claimName: loki-pvc
+      - name: tmp
+        emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

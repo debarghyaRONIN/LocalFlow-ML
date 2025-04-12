@@ -27,26 +27,14 @@ spec:
     spec:
       containers:
       - name: mlflow
-        image: ghcr.io/mlflow/mlflow:v2.7.1
+        image: ghcr.io/mlflow/mlflow:latest
+        command: ["mlflow"]
         args:
         - server
         - --host=0.0.0.0
         - --port=5000
         - --backend-store-uri=sqlite:///mlflow.db
-        - --default-artifact-root=s3://mlflow/artifacts
-        env:
-        - name: AWS_ACCESS_KEY_ID
-          valueFrom:
-            secretKeyRef:
-              name: minio-credentials
-              key: access-key
-        - name: AWS_SECRET_ACCESS_KEY
-          valueFrom:
-            secretKeyRef:
-              name: minio-credentials
-              key: secret-key
-        - name: MLFLOW_S3_ENDPOINT_URL
-          value: http://minio:9000
+        - --default-artifact-root=file:///mlflow/artifacts
         ports:
         - containerPort: 5000
         volumeMounts:
@@ -56,13 +44,13 @@ spec:
           httpGet:
             path: /
             port: 5000
-          initialDelaySeconds: 5
+          initialDelaySeconds: 15
           periodSeconds: 10
         livenessProbe:
           httpGet:
             path: /
             port: 5000
-          initialDelaySeconds: 15
+          initialDelaySeconds: 30
           periodSeconds: 20
       volumes:
       - name: mlflow-data

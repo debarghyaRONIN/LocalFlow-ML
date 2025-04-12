@@ -1,0 +1,275 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: datahub-mysql-pvc
+  namespace: mlops
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: datahub-mysql-secrets
+  namespace: mlops
+type: Opaque
+data:
+  # "datahub" in base64
+  mysql-root-password: ZGF0YWh1Yg==
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: datahub-mysql
+  namespace: mlops
+spec:
+  selector:
+    matchLabels:
+      app: datahub-mysql
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: datahub-mysql
+    spec:
+      containers:
+      - name: mysql
+        image: mysql:8.0
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: datahub-mysql-secrets
+              key: mysql-root-password
+        - name: MYSQL_DATABASE
+          value: "datahub"
+        ports:
+        - containerPort: 3306
+          name: mysql
+        volumeMounts:
+        - name: mysql-storage
+          mountPath: /var/lib/mysql
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        readinessProbe:
+          tcpSocket:
+            port: 3306
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          tcpSocket:
+            port: 3306
+          initialDelaySeconds: 15
+          periodSeconds: 20
+      volumes:
+      - name: mysql-storage
+        persistentVolumeClaim:
+          claimName: datahub-mysql-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: datahub-mysql
+  namespace: mlops
+spec:
+  ports:
+  - port: 3306
+    targetPort: 3306
+  selector:
+    app: datahub-mysql
+  clusterIP: None
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: datahub-elasticsearch
+  namespace: mlops
+spec:
+  selector:
+    matchLabels:
+      app: datahub-elasticsearch
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: datahub-elasticsearch
+    spec:
+      containers:
+      - name: elasticsearch
+        image: elasticsearch:7.10.1
+        env:
+        - name: discovery.type
+          value: "single-node"
+        - name: ES_JAVA_OPTS
+          value: "-Xms256m -Xmx512m"
+        ports:
+        - containerPort: 9200
+          name: http
+        - containerPort: 9300
+          name: transport
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        readinessProbe:
+          httpGet:
+            path: /_cluster/health
+            port: 9200
+          initialDelaySeconds: 15
+          timeoutSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /_cluster/health
+            port: 9200
+          initialDelaySeconds: 90
+          timeoutSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: datahub-elasticsearch
+  namespace: mlops
+spec:
+  ports:
+  - port: 9200
+    name: http
+    targetPort: 9200
+  - port: 9300
+    name: transport
+    targetPort: 9300
+  selector:
+    app: datahub-elasticsearch
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: datahub-gms
+  namespace: mlops
+spec:
+  selector:
+    matchLabels:
+      app: datahub-gms
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: datahub-gms
+    spec:
+      containers:
+      - name: datahub-gms
+        image: linkedin/datahub-gms:v0.12.0
+        env:
+        - name: EBEAN_DATASOURCE_USERNAME
+          value: "root"
+        - name: EBEAN_DATASOURCE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: datahub-mysql-secrets
+              key: mysql-root-password
+        - name: EBEAN_DATASOURCE_HOST
+          value: "datahub-mysql"
+        - name: EBEAN_DATASOURCE_URL
+          value: "jdbc:mysql://datahub-mysql:3306/datahub"
+        - name: ELASTICSEARCH_HOST
+          value: "datahub-elasticsearch"
+        - name: ELASTICSEARCH_PORT
+          value: "9200"
+        - name: KAFKA_BOOTSTRAP_SERVER
+          value: "datahub-mysql:3306" # In a real setup, this would be a Kafka server
+        - name: DATAHUB_GMS_HOST
+          value: "datahub-gms"
+        - name: DATAHUB_GMS_PORT
+          value: "8080"
+        ports:
+        - containerPort: 8080
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 20
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: datahub-gms
+  namespace: mlops
+spec:
+  ports:
+  - port: 8080
+    targetPort: 8080
+  selector:
+    app: datahub-gms
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: datahub-frontend
+  namespace: mlops
+spec:
+  selector:
+    matchLabels:
+      app: datahub-frontend
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: datahub-frontend
+    spec:
+      containers:
+      - name: datahub-frontend
+        image: linkedin/datahub-frontend-react:v0.12.0
+        env:
+        - name: DATAHUB_GMS_HOST
+          value: "datahub-gms"
+        - name: DATAHUB_GMS_PORT
+          value: "8080"
+        - name: DATAHUB_SECRET
+          value: "YouShouldReallyChangeThis"
+        ports:
+        - containerPort: 9002
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 9002
+          initialDelaySeconds: 20
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: datahub-frontend
+  namespace: mlops
+spec:
+  ports:
+  - port: 9002
+    targetPort: 9002
+  selector:
+    app: datahub-frontend
+  type: NodePort 

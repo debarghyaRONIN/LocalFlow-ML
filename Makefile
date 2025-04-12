@@ -42,6 +42,10 @@ deploy-model:
 	python pipelines/deployment/deploy.py
 	@echo "Model API deployed!"
 
+# Deploy all services
+deploy-all: deploy-infra deploy-model
+	@echo "All services deployed successfully!"
+
 # Clean up
 clean:
 	@echo "Cleaning up..."

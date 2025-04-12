@@ -15,13 +15,11 @@ spec:
     spec:
       containers:
       - name: model-api
-        image: model-api:latest
+        image: docker.io/library/model-api:latest
         imagePullPolicy: Never  # For local testing with Minikube
         ports:
         - containerPort: 8000
           name: http
-        - containerPort: 8000
-          name: metrics
         env:
         - name: MLFLOW_TRACKING_URI
           value: http://mlflow:5000
