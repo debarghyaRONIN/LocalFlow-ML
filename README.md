@@ -107,6 +107,3 @@ Ensures data quality throughout the ML lifecycle:
 - Statistical checks with Great Expectations
 - Automatic data quality reporting
 
-## License
-
-MIT 
